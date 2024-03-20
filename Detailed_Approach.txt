@@ -1,0 +1,45 @@
+This C++ program simulates a basic cab service system within a city, allowing users to find the nearest available cab, update cab locations (an admin-only activity), and view available cabs in a certain area.
+
+DESCRIPTION:
+In order to book the best cab booking the search algorithm was required to be optimised . I decided to structure a complete city in the 
+form of a graph with nodes, for any instance of the time a cab can be at any of the nodes of the graph . A person who wants to book 
+the cab would also reside at one of the nodes of the graph . This type of implementation allowed me to find the nearest cab node from 
+from the source node in an extremely efficient manner using the Dijkstra's algorithm. Other features are also implemented and briefly 
+explained below.
+
+Here's a summary of the program's flow:
+
+Classes and Structures:
+
+Edge: Represents an edge in the graph, with a destination node and weight.
+Graph: Represents the city's graph structure with nodes and edges.
+CabSystem: Manages the overall cab system, including finding the nearest cab, updating cab locations, and viewing available cabs.
+Main Function:
+
+Initializes a Graph object representing the city's structure.
+Initializes a set of cab locations.
+Sets up an admin password for system administration.
+Initializes a CabSystem object with the city's graph, cab locations, and admin password.
+Enters a loop to present options to the user until the user decides to exit.
+Options:
+
+Find a Cab (Option 1):
+Prompts the user to enter their location index.
+Utilizes suggestBestCab function to find the nearest cab and its distance from the user's location.
+Displays the index and distance of the nearest cab.
+Update Cab Location (Option 2):
+Requires authentication with the admin password.
+Prompts the admin to enter the previous location of the cab (or -1 if it's a new cab) and the current location.
+Utilizes the UpdateLocation function to update the cab's location.
+View Available Cabs (Option 3):
+Prompts the user to enter their location index.
+Utilizes the showNearCabs function to display available cabs near the specified location.
+Exit (Option 4):
+Exits the program.
+Functions:
+
+cabMatrix: Utilizes Dijkstra's algorithm to compute the shortest distances from a given source node to all other nodes (cabs).
+nearestCab: Finds the nearest cab to a given source node based on the distances computed by cabMatrix.
+UpdateCab: Updates the location of a cab or inserts a new cab's location into the system. It's an admin-only function.
+AuthenticateAdmin: Authenticates the admin using the provided password.
+Overall, the program allows users to interact with the cab service system by finding nearby cabs, updating cab locations (admin only), and viewing available cabs in a specific area.
