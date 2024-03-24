@@ -1,102 +1,385 @@
+// Go through detailedapproach.txt file to understand the workflow
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <limits>
+#include <math.h>
+#include <unordered_set>
 #include <bits/stdc++.h>
+
 using namespace std;
 
-struct Customer {
-    string name;
-    long long phone;
-    string pin;
-    int slot;
-    Customer(string n, long long m, string p, int a) : name(n), phone(m), pin(p), slot(a) {}
+// defining the class which describes one edge of the graph
+//  The Edge is composed of
+//  1. to-> The node that is being connected
+//  2. weight-> The weight of the edge
+
+class Edge
+{
+private:
+    int to;
+    double weight;
+
+public:
+    Edge(int to, double weight) : to(to), weight(weight) {}
+
+    // 1. getTo function -> returns the "to" edge
+    int getTo() const { return to; }
+
+    // 2. weight function -> returns the weight of the edge
+    double getWeight() const { return weight; }
 };
 
-void displayMenu();
-void viewParkingLot(int arr[3][10]);
-int findEmptySlot(int arr[3][10]);
+// The Graph class is used to describe the structure of the city in which Cab service is used
+// graph data structure is used to implement the Graph class in which an adjescency list describes the graph
 
-int main() {
-    unordered_map<int, Customer*> twoWheelerMap;
-    unordered_map<int, Customer*> fourWheelerMap;
-    int twoWheelerParking[3][10] = {0};
-    int fourWheelerParking[3][10] = {0};
+class Graph
+{
+private:
+    vector<vector<Edge>> adjList;
 
-    int flag = 0;
-    while (flag == 0) {
-        displayMenu();
-        int choice;
-        cin >> choice;
+public:
+    int Nodes;
+    Graph(int n) : adjList(n)
+    {
+        this->Nodes = n;
+    }
 
-        switch (choice) {
-            case 1: {
-                int slot = findEmptySlot(twoWheelerParking);
-                if (slot == 0) {
-                    cout << "Sorry! No space available for parking." << endl;
-                    break;
+    // addEdge function-> adda the edge in the graph
+    void addEdge(int from, int to, double weight)
+    {
+        adjList[from].emplace_back(to, weight);
+    }
+
+    // getAdjescent function -> returns a vector that contains the all adjescent elements of that node
+    const vector<Edge> &getAdjacent(int node) const
+    {
+        return adjList[node];
+    }
+};
+
+// CabSystem class defines the overall structure of the city along with the locations where the cabs are currently present
+// CabSystem performs the task of allocating a cab by finding the nearest cab to the source location
+class CabSystem
+{
+private:
+    const Graph &graph;
+    unordered_set<int> &cabLocations;
+    string &adminPassword;
+
+    // The cabMatrix function returns a vector of all the nearest nodes(cabs) to a given source node
+    // It utilises Dijkstra's algorithm to find the shortest distance from the cas that are available
+    vector<double> cabMatrix(const Graph &graph, int source)
+    {
+
+        int n = graph.Nodes;
+        vector<double> distances(n, numeric_limits<double>::infinity());
+        distances[source] = 0;
+
+        priority_queue<pair<double, int>, vector<pair<double, int>>, greater<pair<double, int>>> pq;
+        pq.push({0, source});
+
+        while (!pq.empty())
+        {
+            int current_node = pq.top().second;
+            double current_distance = pq.top().first;
+            pq.pop();
+
+            if (current_distance > distances[current_node])
+            {
+                continue;
+            }
+
+            for (const Edge &edge : graph.getAdjacent(current_node))
+            {
+                int neighbor_node = edge.getTo();
+                double weight = edge.getWeight();
+                double distance = current_distance + weight;
+                if (distance < distances[neighbor_node])
+                {
+                    distances[neighbor_node] = distance;
+                    pq.push({distance, neighbor_node});
                 }
-
-                int vehicleNo;
-                cout << "Enter your vehicle number: ";
-                cin >> vehicleNo;
-                string name;
-                cout << "Enter your name: ";
-                cin >> name;
-                long long phone;
-                cout << "Enter your phone number: ";
-                cin >> phone;
-                
-                string pin = "2" + to_string(vehicleNo) + to_string(slot);
-
-                Customer* customer = new Customer(name, phone, pin, slot);
-                twoWheelerMap[vehicleNo] = customer;
-
-                int row = (slot - 1) / 10;
-                int col = (slot - 1) % 10;
-                twoWheelerParking[row][col] = 1;
-
-                cout << "Your vehicle parking pin is: " << pin << endl;
-                cout << "Please park your vehicle at slot " << char('A' + row) << col + 1 << endl;
-                break;
-            }
-            case 7: {
-                flag = 1;
-                break;
-            }
-            default: {
-                cout << "Invalid choice. Please try again." << endl;
-                break;
             }
         }
+        return distances; // The distances vector is returned
     }
-    return 0;
-}
 
-void displayMenu() {
-    cout << "===== Parking Management System =====" << endl;
-    cout << "1. Park 2 wheeler" << endl;
-    cout << "2. Park 4 wheeler" << endl;
-    cout << "3. Leave from 2 wheeler" << endl;
-    cout << "4. Leave from 4 wheeler" << endl;
-    cout << "5. Print ticket" << endl;
-    cout << "6. Get an overview of parking lot (admins only)" << endl;
-    cout << "7. Exit" << endl;
-    cout << "Enter your choice: ";
-}
-
-void viewParkingLot(int arr[3][10]) {
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 10; j++) {
-            cout << arr[i][j] << " ";
+    // nearestCab function utilises the vector of dstance from cabMatrix fucntion to find the nearest cab to a given source node
+    // This function is utilised to find the best cab that should be choosen for the journey
+    // This function returns a pair that contains the index(location) of the nearestCab to the source and the distance of the nearest Cab from the source
+    pair<int, int> nearestCab(const Graph &graph, int source)
+    {
+        int n = graph.Nodes;
+        if (source < 0)
+        {
+            return {-1, -1};
         }
-        cout << endl;
-    }
-}
-
-int findEmptySlot(int arr[3][10]) {
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 10; j++) {
-            if (arr[i][j] == 0) {
-                return (i + 1) * 10 + (j + 1);
+        if (source >= n)
+        {
+            return {-2, -2};
+        }
+        int ind = 0;
+        int mn = INT_MAX;
+        vector<double> nearbycabs = cabMatrix(graph, source);
+        for (int i = 0; i < nearbycabs.size(); i++)
+        {
+            if (cabLocations.count(i))
+            {
+                if (mn > nearbycabs[i])
+                {
+                    mn = nearbycabs[i];
+                    ind = i;
+                }
             }
         }
+        return {ind, mn};
     }
+
+    // ViewCabs function displays the cabs that are available from a given source
+    // This function also utilises the distance vector generated by the CabMatrix function to find all the cabs that are available in an area
+    void ViewCabs(int source)
+    {
+        vector<double> nearbyCabs = cabMatrix(this->graph, source);
+        for (int i = 0; i < nearbyCabs.size(); i++)
+        {
+            if (cabLocations.count(i))
+            {
+                cout << "Cab at location " << i << " is " << nearbyCabs[i] << " km from you " << endl; // cabs being displayed
+            }
+        }
+        cout << "Please use 'find a cab' facility in option 1 to find the best Cab for yourself" << endl;
+    }
+
+    // UpdateCab function is responsible to update the CabLocations( that contains information of each cabs location ) .
+    // whenever a cab moves from one location to onother it's current location should be updated
+    // The CabLocations set gets updated whenever UpdateCab function is executed with proper inputs
+    // The Updation of Cab is an ONLY ADMINS activity . No one other that admin should be able to alter the cabs locations
+    // If updated correctly it return a true
+    // It returns false in case of any failure
+    bool UpdateCab(int previous, int current)
+    {
+        if (previous == -1) // if new cab is added
+        {
+            cabLocations.insert(current);
+            return true;
+        }
+        auto it = cabLocations.find(previous);
+        if (it == cabLocations.end())
+        {
+            return false;
+        }
+        cabLocations.erase(it);
+        cabLocations.insert(current);
+        return true;
+    }
+    // All the above functions were defined privately so that its implementation does not gets exposed
+
+public:
+    // initialisation of instance of CabSystem using parameterised constructors
+    CabSystem(const Graph &graph, unordered_set<int> &cabs, string &password) : graph(graph), cabLocations(cabs), adminPassword(password) {}
+
+    // The authenticate Admin
+    // Options such as Update cabs location should only be performed by the authorised person (Admins)
+    bool AuthenticateAdmin(const string &password)
+    {
+        return password == adminPassword;
+    }
+
+    // The nearest Cab function is implemented as the original function is private and not public
+    pair<int, int> suggestBestCab(int tripStart)
+    {
+        return nearestCab(graph, tripStart);
+    }
+
+    // The updateCab function is implemented as the original function is private and not public
+    bool UpdateLocation(int previous, int current)
+    {
+        return UpdateCab(previous, current);
+    }
+
+    // The viewCabs function is implemented as the original function is private and not public
+    void showNearCabs(int source)
+    {
+        ViewCabs(source);
+    }
+};
+
+// Print is the independent function that displays the options available.
+void print()
+{
+    cout << "Please select an option :" << endl;
+    cout << "1. Find a cab" << endl;
+    cout << "2. Update Cab location or insert new cab location (Admins)" << endl;
+    cout << "3. View available cabs " << endl;
+    cout << "4. Exit" << endl;
+}
+
+// switch_case function is used to implement the functionality that each option offers
+void switch_case(int command, CabSystem &cabSystem)
+{
+    // defining the variables
+    int source, previousLocation, currentLocation;
+    bool result;
+    pair<int, int> bestCabIndex;
+
+    switch (command)
+    {
+    // In option 1. we get the index and the distance of the nearest cab that can opted
+    case 1:
+        cout << "Please enter your location index : ";
+        cin >> source;
+        bestCabIndex = cabSystem.suggestBestCab(source); // cabSystem intance initiated
+
+        if (bestCabIndex.first == -1)
+        {
+            // checking for errors and wrong inputs
+            cout << "Location index cannot be negetive , enter a valid location" << endl;
+        }
+
+        else if (bestCabIndex.first == -2)
+        {
+            // If an index which is not available in the graph then
+            cout << "Sorry,Cab not available , We are working on it,Our services will soon be available in your area. " << endl;
+        }
+
+        else
+        {
+            // The index and distance of best cab is returned
+            cout << "Best cab is at index " << bestCabIndex.first << " which is " << bestCabIndex.second << " km from you." << endl;
+        }
+        break;
+    case 2:
+    {
+        // In option 2. makes it possible to updatecabs location using UpdateLocation function of the CabSystem
+        // It is an admin only activity that's why authentication of the admin is done using authenticateAdmin function of the CabSystem
+        string password;
+        cout << "Enter admin password: ";
+        cin >> password;
+        if (!cabSystem.AuthenticateAdmin(password))
+        {
+            cout << "Invalid password. Access denied." << endl;
+            break;
+        }
+
+        // cabs previous location and current location's input is taken
+        cout << "Enter the previous location (enter -1 if new Cab is to be added) : ";
+        cin >> previousLocation;
+        cout << "Enter the current location : ";
+        cin >> currentLocation;
+
+        // The UpdateLocation function of CabSystem is used to update the location
+        result = cabSystem.UpdateLocation(previousLocation, currentLocation);
+        if (result) // If true is returned the updation message is displayed
+        {
+            cout << "Location updated." << endl;
+        }
+        else // In case of false error message is displayed
+        {
+            cout << " Cannot update cab location (Please check for a valid input)." << endl;
+        }
+    }
+    break;
+
+    case 3:
+    {
+        // option 3. allows us to view all the cabs that are available near us using tha showNearCabs function of Cabsystem class
+        cout << "enter your location index : ";
+        cin >> source;
+        cabSystem.showNearCabs(source);
+    }
+    break;
+
+    case 4: // To exit
+        cout << "Exiting..." << endl;
+        break;
+    default: // In case of any invalid input
+        cout << "Please enter a valid option" << endl;
+    }
+}
+
+int main()
+{
+    // Example usage
+    // For testing pupose an instance of Graph class is created with 20 nodes
+    int n = 20;
+    Graph city(n);
+
+    // Add edges and weights to the graph (example connections)
+    city.addEdge(0, 1, 3);
+    city.addEdge(1, 0, 3);
+    city.addEdge(0, 2, 1);
+    city.addEdge(2, 0, 1);
+    city.addEdge(1, 3, 2);
+    city.addEdge(3, 1, 2);
+    city.addEdge(1, 4, 1);
+    city.addEdge(4, 1, 1);
+    city.addEdge(2, 5, 4);
+    city.addEdge(5, 2, 4);
+    city.addEdge(2, 6, 3);
+    city.addEdge(6, 2, 3);
+    city.addEdge(3, 7, 2);
+    city.addEdge(7, 3, 2);
+    city.addEdge(4, 8, 3);
+    city.addEdge(8, 4, 3);
+    city.addEdge(5, 9, 2);
+    city.addEdge(9, 5, 2);
+    city.addEdge(5, 10, 1);
+    city.addEdge(10, 5, 1);
+    city.addEdge(6, 11, 3);
+    city.addEdge(11, 6, 3);
+    city.addEdge(6, 12, 2);
+    city.addEdge(12, 6, 2);
+    city.addEdge(7, 13, 1);
+    city.addEdge(13, 7, 1);
+    city.addEdge(8, 14, 4);
+    city.addEdge(14, 8, 4);
+    city.addEdge(9, 15, 3);
+    city.addEdge(15, 9, 3);
+    city.addEdge(9, 16, 2);
+    city.addEdge(16, 9, 2);
+    city.addEdge(10, 17, 1);
+    city.addEdge(17, 10, 1);
+    city.addEdge(11, 18, 3);
+    city.addEdge(18, 11, 3);
+    city.addEdge(12, 19, 2);
+    city.addEdge(19, 12, 2);
+
+    // For testing purpose cabLocations hashset is initialised with 3 inputs
+    unordered_set<int> cabLocations;
+    cabLocations.insert(13);
+    cabLocations.insert(17);
+    cabLocations.insert(19);
+
+    // before initialising an object of CabSystem the Admin is required to set a password
+    // The password that is set, is used by the system as admin's password until the server is not closed
+    // Whenever there is a restart the password is again extablished
+    cout << "Admin password setup required " << endl;
+    string adminPassword;
+    cout << "Enter admin's password: ";
+    cin >> adminPassword;
+
+    // object of CabSystem is initialised
+    CabSystem cabSystem(city, cabLocations, adminPassword);
+
+    // Program runs until the 4 is recieved as input
+    while (true)
+    {
+        int command;
+        print();
+        cin >> command;
+        if (command == 4)
+        {
+            break; // Exit the loop
+        }
+        else
+        {
+            cout << endl;
+            switch_case(command, cabSystem);
+            cout << endl;
+        }
+    }
+
     return 0;
 }
